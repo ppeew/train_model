@@ -1,0 +1,6 @@
+/bert-base-chinese
+/bert_checkpoint/*
+
+/.idea
+/.vscode
+/.venv
