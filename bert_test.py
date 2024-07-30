@@ -10,7 +10,7 @@ save_path = './bert_checkpoint'
 test_dataset = GenerateData(mode="test")
 model = BertClassifier(classifier_num=72)
 
-model.load_state_dict(torch.load(os.path.join(save_path, 'best.pt'),weights_only=True))
+model.load_state_dict(torch.load(os.path.join(save_path, 'best_100.pt'),weights_only=True))
 model = model.to(device)
 model.eval()
 

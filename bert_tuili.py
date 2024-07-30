@@ -29,7 +29,7 @@ with open('DataWords/data/class.txt', 'r', encoding='utf-8') as f:
 while True:
     text = input('请输入分析语句：')
     bert_input = tokenizer(text, padding='max_length', 
-                           max_length = 35, 
+                           max_length = 50,
                            truncation=True,
                            return_tensors="pt")
     input_ids = bert_input['input_ids'].to(device)
