@@ -9,7 +9,7 @@ import pandas as pd
 import random
 import os
 from torch.utils.data import Dataset, DataLoader
-from bert_get_data import BertClassifier, MyDataset, GenerateData, tokenizer
+from bert_get_data import BertClassifier, MyDataset, GenerateData, tokenizer,label_encoder
 def setup_seed(seed):
     torch.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
@@ -51,7 +51,7 @@ def find_max_num_file(directory):
     return max_file
 
 # 定义模型
-model = BertClassifier(classifier_num=72)
+model = BertClassifier(classifier_num=2520)
 file=find_max_num_file("bert_checkpoint")
 print("load model from:",file)
 
@@ -63,11 +63,6 @@ criterion = nn.CrossEntropyLoss()
 optimizer = Adam(model.parameters(), lr=lr)
 model = model.to(device)
 criterion = criterion.to(device)
-
-real_labels = []
-with open('DataWords/data/class.txt', 'r', encoding='utf-8') as f:
-    for row in f.readlines():
-        real_labels.append(row.strip())
 
 # 训练
 best_dev_acc = 0
@@ -107,13 +102,17 @@ for epoch_num in range(epoch):
             total_loss_val += batch_loss.item()
 
             # TODO 检查预测数据与真实数据差异
-            # for i,(input,label) in enumerate(zip(inputs['input_ids'],labels)):
-            #     pred = output.argmax(dim=1)[i]
-            #
-            #     input_text=tokenizer.decode(input[0].cpu().numpy(),skip_special_tokens=True)
-            #
-            #     print(f'''input_text:{input_text.replace(" ","")} | pred: {real_labels[pred.item()]} | label: {real_labels[label.item()]}''')
+            for i,(input,label) in enumerate(zip(inputs['input_ids'],labels)):
+                pred = output.argmax(dim=1)[i]
 
+                # 解码预测结果，复原为原始的中文文本
+                input_text = tokenizer.decode(input.squeeze().cpu().numpy(), skip_special_tokens=True)
+
+                pred_str = label_encoder.inverse_transform([pred.item()])
+                label_str = label_encoder.inverse_transform([label.item()])
+                print(
+                    f'''input_text:{input_text.replace(" ", "")} | pred: {pred_str} | label: {label_str} 
+                                   ------> 预测{['正确' if pred.item() == label.item() else '错误']}''')
 
         print(f'''Epochs: {epoch_num + 1} 
           | Train Loss: {total_loss_train / len(train_dataset): .3f} 

@@ -80,10 +80,10 @@ for garden in gardens:
                                     train_data.append((input2, t2))
 
 df = pd.DataFrame(train_data)
-df.to_csv("train_data.csv", sep=",", encoding='utf-8', index=False, header=False)
+df.to_csv("train_data.txt", sep="\t", encoding='utf-8', index=False, header=False)
 
 df2 = pd.DataFrame(test_data)
-df2.to_csv("test_data.csv", sep=",", encoding='utf-8', index=False, header=False)
+df2.to_csv("test_data.txt", sep="\t", encoding='utf-8', index=False, header=False)
 
 # 随机抽取训练集10%作为测试集（但是不合理，应该重新造数据）
 # test_data = []

@@ -2,7 +2,9 @@
 import os
 from transformers import BertTokenizer
 import torch
-from bert_get_data import BertClassifier
+
+import bert_get_data
+from bert_get_data import BertClassifier,label_encoder
 
 bert_name = './bert-base-chinese'
 tokenizer = BertTokenizer.from_pretrained(bert_name)
@@ -11,15 +13,10 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 model_name = input("请输入要测试的模型名称（best_{num}.pt）:")
 
 save_path = './bert_checkpoint'
-model = BertClassifier(classifier_num=72)
+model = BertClassifier(classifier_num=2520)
 model.load_state_dict(torch.load(os.path.join(save_path, model_name), weights_only=True))
 model = model.to(device)
 model.eval()
-
-real_labels = []
-with open('DataWords/data/class.txt', 'r', encoding='utf-8') as f:
-    for row in f.readlines():
-        real_labels.append(row.strip())
 
 while True:
     text = input('请输入分析语句：')
@@ -33,9 +30,12 @@ while True:
     pred = output.argmax(dim=1)
     # 获取两个最高概率的类别
     _, top_2 = torch.topk(output, 2)
-    top_2_labels = [real_labels[x.item()] for x in top_2[0]]
-    print('第一个答案:', top_2_labels[0])
-    print('第二个答案:', top_2_labels[1])
+    top_2_labels = [x.item() for x in top_2[0]]
+
+    pred_str = label_encoder.inverse_transform([top_2_labels[0].item()])
+    label_str = label_encoder.inverse_transform([top_2_labels[1].item()])
+    print('第一个答案:', pred_str)
+    print('第二个答案:', label_str)
 
     # print(real_labels[pred])
 

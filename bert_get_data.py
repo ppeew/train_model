@@ -1,31 +1,30 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Tue Jan  2 10:17:40 2024
-
-@author: QiJing
-"""
-
 import pandas as pd
-from torch.utils.data import Dataset, DataLoader
+import torch
+from torch.utils.data import Dataset
 from transformers import BertTokenizer
 from torch import nn
 from transformers import BertModel
-
+from sklearn.preprocessing import LabelEncoder
 
 bert_name = './bert-base-chinese'
 tokenizer = BertTokenizer.from_pretrained(bert_name)
 
+# 初始化标签编码器
+label_encoder = LabelEncoder()
+
+
 class MyDataset(Dataset):
     def __init__(self, df):
-        # tokenizer分词后可以被自动汇聚
-        self.texts = [tokenizer(text, 
-                                padding='max_length',  # 填充到最大长度
-                                max_length = 50, 	# 经过数据分析，最大长度为50
+        # 将文本转为BERT输入格式
+        self.texts = [tokenizer(text,
+                                padding='max_length',
+                                max_length=50,
                                 truncation=True,
-                                return_tensors="pt") 
+                                return_tensors="pt")
                       for text in df['text']]
-        # Dataset会自动返回Tensor
-        self.labels = [label for label in df['label']]
+
+        # 将中文标签转换为数值化标签
+        self.labels = torch.tensor(label_encoder.fit_transform(df['label']), dtype=torch.long)
 
     def __getitem__(self, idx):
         return self.texts[idx], self.labels[idx]
@@ -33,10 +32,9 @@ class MyDataset(Dataset):
     def __len__(self):
         return len(self.labels)
 
-    
 
 class BertClassifier(nn.Module):
-    def __init__(self,classifier_num):
+    def __init__(self, classifier_num):
         super(BertClassifier, self).__init__()
         self.bert = BertModel.from_pretrained(bert_name)
         self.dropout = nn.Dropout(0.5)
@@ -60,15 +58,16 @@ def GenerateData(mode):
     dev_df = pd.read_csv(dev_data_path, sep='\t', header=None)
     test_df = pd.read_csv(test_data_path, sep='\t', header=None)
 
-    new_columns = ['text', 'label']  
+    new_columns = ['text', 'label']
     train_df = train_df.rename(columns=dict(zip(train_df.columns, new_columns)))
     dev_df = dev_df.rename(columns=dict(zip(dev_df.columns, new_columns)))
     test_df = test_df.rename(columns=dict(zip(test_df.columns, new_columns)))
 
+    # 对训练集和测试集的标签进行编码
     train_dataset = MyDataset(train_df)
     dev_dataset = MyDataset(dev_df)
     test_dataset = MyDataset(test_df)
-    
+
     if mode == 'train':
         return train_dataset
     elif mode == 'val':
@@ -77,13 +76,8 @@ def GenerateData(mode):
         return test_dataset
 
 
-
-
-
-
-
-
-
-
-
-
+def GetClassifierLen(train_dataset):
+    label_set = set()
+    for data in train_dataset.labels:
+        label_set.add(data)
+    return len(label_set)

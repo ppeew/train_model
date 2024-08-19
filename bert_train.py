@@ -5,12 +5,14 @@ from torch import nn
 from torch.optim import Adam
 from tqdm import tqdm
 import numpy as np
-import pandas as pd
 import random
 import os
-from torch.utils.data import Dataset, DataLoader
-from bert_get_data import BertClassifier, MyDataset, GenerateData, tokenizer
+from torch.utils.data import DataLoader
+from transformers import BertTokenizer
+from bert_get_data import BertClassifier, GenerateData, label_encoder, GetClassifierLen
 
+# 初始化 BERT tokenizer，用于处理中文
+tokenizer = BertTokenizer.from_pretrained('bert-base-chinese')
 
 def setup_seed(seed):
     torch.manual_seed(seed)
@@ -18,7 +20,6 @@ def setup_seed(seed):
     np.random.seed(seed)
     random.seed(seed)
     torch.backends.cudnn.deterministic = True
-
 
 def save_model(save_name):
     if not os.path.exists(save_path):
@@ -41,18 +42,16 @@ dev_dataset = GenerateData(mode='test')
 train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
 dev_loader = DataLoader(dev_dataset, batch_size=batch_size)
 
+classifier_num = GetClassifierLen(train_dataset)
+print(classifier_num)
+
 # 定义模型
-model = BertClassifier(classifier_num=72)
+model = BertClassifier(classifier_num=classifier_num)
 # 定义损失函数和优化器
 criterion = nn.CrossEntropyLoss()
 optimizer = Adam(model.parameters(), lr=lr)
 model = model.to(device)
 criterion = criterion.to(device)
-
-real_labels = []
-with open('DataWords/data/class.txt', 'r', encoding='utf-8') as f:
-    for row in f.readlines():
-        real_labels.append(row.strip())
 
 # 训练
 best_dev_acc = 0
@@ -60,8 +59,8 @@ for epoch_num in range(epoch):
     total_acc_train = 0
     total_loss_train = 0
     for inputs, labels in tqdm(train_loader):
-        input_ids = inputs['input_ids'].squeeze(1).to(device)  # torch.Size([32, 35])
-        masks = inputs['attention_mask'].to(device)  # torch.Size([32, 1, 35])
+        input_ids = inputs['input_ids'].squeeze(1).to(device)
+        masks = inputs['attention_mask'].to(device)
         labels = labels.to(device)
         output = model(input_ids, masks)
 
@@ -74,15 +73,15 @@ for epoch_num in range(epoch):
         total_acc_train += acc
         total_loss_train += batch_loss.item()
 
-    # ----------- 验证模型 -----------
+    # 验证模型
     model.eval()
     total_acc_val = 0
     total_loss_val = 0
 
     with torch.no_grad():
         for inputs, labels in dev_loader:
-            input_ids = inputs['input_ids'].squeeze(1).to(device)  # torch.Size([32, 35])
-            masks = inputs['attention_mask'].to(device)  # torch.Size([32, 1, 35])
+            input_ids = inputs['input_ids'].squeeze(1).to(device)
+            masks = inputs['attention_mask'].to(device)
             labels = labels.to(device)
             output = model(input_ids, masks)
 
@@ -91,14 +90,18 @@ for epoch_num in range(epoch):
             total_acc_val += acc
             total_loss_val += batch_loss.item()
 
-            # TODO 检查预测数据与真实数据差异
+            # 检查预测数据与真实数据差异
             for i, (input, label) in enumerate(zip(inputs['input_ids'], labels)):
                 pred = output.argmax(dim=1)[i]
 
-                input_text = tokenizer.decode(input[0].cpu().numpy(), skip_special_tokens=True)
+                # 解码预测结果，复原为原始的中文文本
+                input_text = tokenizer.decode(input.squeeze().cpu().numpy(), skip_special_tokens=True)
 
+                pred_str = label_encoder.inverse_transform([pred.item()])
+                label_str = label_encoder.inverse_transform([label.item()])
                 print(
-                    f'''input_text:{input_text.replace(" ","")} | pred: {real_labels[pred.item()]} | label: {real_labels[label.item()]} ------> 预测{['正确' if pred.item() == label.item() else '错误']}''')
+                    f'''input_text:{input_text.replace(" ", "")} | pred: {pred_str} | label: {label_str} 
+                    ------> 预测{['正确' if pred.item() == label.item() else '错误']}''')
 
         print(f'''Epochs: {epoch_num + 1} 
           | Train Loss: {total_loss_train / len(train_dataset): .3f} 
