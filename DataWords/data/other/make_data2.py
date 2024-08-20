@@ -59,19 +59,6 @@ for garden in gardens:
                                         input2 = input2.replace(f"({pos})", "")
                                 t2 = "M{}-{}F-{}机房-{}-{}#{}".format(garden, floor, room, device_name, device_id,
                                                                       device_info)
-                                # csv target只存储ID
-                                # poss = index
-                                # if t2 in label_map2:
-                                #     # 如果存在改元素
-                                #     poss = label_map2[t2]
-                                #
-                                # else:
-                                #     label_map2[t2] = poss
-                                #     index = index + 1
-                                #
-                                # label_map[poss] = t2
-                                # input_word.append(input2)
-                                # target.append(poss)
 
                                 # 抽取一个作为测试集
                                 if i == 2 * j and j == 6:

@@ -1,43 +1,74 @@
 # -*- coding: utf-8 -*-
 import os
+
+import pandas as pd
+from sklearn.preprocessing import LabelEncoder
 from transformers import BertTokenizer
 import torch
 
-import bert_get_data
-from bert_get_data import BertClassifier,label_encoder
+def InitLabelEncoder():
+    label_encoder = LabelEncoder()
+    train_data_path = 'DataWords/data/train_data.txt'
+
+    train_df = pd.read_csv(train_data_path, sep=';', header=None)
+
+    new_columns = ['text', 'label']
+    train_df = train_df.rename(columns=dict(zip(train_df.columns, new_columns)))
+
+    # 使用整个数据集的标签来拟合 LabelEncoder
+    label_encoder.fit(train_df['label'])
+    return label_encoder
 
 bert_name = './bert-base-chinese'
 tokenizer = BertTokenizer.from_pretrained(bert_name)
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-model_name = input("请输入要测试的模型名称（best_{num}.pt）:")
-
+model_name = 'best_50.pt'
 save_path = './bert_checkpoint'
-model = BertClassifier(classifier_num=2520)
-model.load_state_dict(torch.load(os.path.join(save_path, model_name), weights_only=True))
+
+# 加载训练好的模型
+model = torch.load(os.path.join(save_path, model_name), map_location=device,weights_only=False)
 model = model.to(device)
 model.eval()
 
+# 初始化 LabelEncoder
+label_encoder = InitLabelEncoder()
+# 获取LabelEncoder中已经见过的类别数
+known_labels = label_encoder.classes_
+
 while True:
     text = input('请输入分析语句：')
+
+    # 处理输入文本
     bert_input = tokenizer(text, padding='max_length',
-                           max_length=50,
+                           max_length=100,
                            truncation=True,
                            return_tensors="pt")
+
     input_ids = bert_input['input_ids'].to(device)
-    masks = bert_input['attention_mask'].unsqueeze(1).to(device)
-    output = model(input_ids, masks)
-    pred = output.argmax(dim=1)
+    masks = bert_input['attention_mask'].to(device)
+
+    # 模型预测
+    with torch.no_grad():
+        output = model(input_ids, masks)
+
+    # 获取输出并去除梯度信息
+    output = output.cpu().numpy()
+
     # 获取两个最高概率的类别
-    _, top_2 = torch.topk(output, 2)
-    top_2_labels = [x.item() for x in top_2[0]]
+    top_2 = output[0].argsort()[-2:][::-1]
 
-    pred_str = label_encoder.inverse_transform([top_2_labels[0].item()])
-    label_str = label_encoder.inverse_transform([top_2_labels[1].item()])
-    print('第一个答案:', pred_str)
-    print('第二个答案:', label_str)
+    # 检查预测的类别是否在训练时的标签范围内
+    valid_top_2 = [label for label in top_2 if label in range(len(known_labels))]
 
-    # print(real_labels[pred])
+    if not valid_top_2:
+        print("预测的类别超出了已知标签范围。")
+    else:
+        pred_str = label_encoder.inverse_transform([valid_top_2[0]])[0]
+        print('第一个答案:', pred_str)
 
-# 输出相关的类别
-# 做分词转化(提取信息),动作行为（怎么生成数据集呢？）
+        if len(valid_top_2) > 1:
+            label_str = label_encoder.inverse_transform([valid_top_2[1]])[0]
+            print('第二个答案:', label_str)
+        else:
+            print('没有找到第二个有效标签')

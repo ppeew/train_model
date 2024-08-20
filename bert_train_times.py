@@ -20,7 +20,7 @@ def setup_seed(seed):
 def save_model(save_name):
     if not os.path.exists(save_path):
         os.makedirs(save_path)
-    torch.save(model.state_dict(), os.path.join(save_path, save_name))
+    torch.save(model, os.path.join(save_path, save_name))
 
 # 训练超参数
 epoch = 2
@@ -55,7 +55,9 @@ model = BertClassifier(classifier_num=2520)
 file=find_max_num_file("bert_checkpoint")
 print("load model from:",file)
 
-model.load_state_dict(torch.load(os.path.join(save_path, file),weights_only=True))
+# model.load_state_dict(torch.load(os.path.join(save_path, file),weights_only=True))
+# model = model.to(device)
+model = torch.load(os.path.join(save_path, file), map_location=device,weights_only=False)
 model = model.to(device)
 
 # 定义损失函数和优化器
@@ -101,7 +103,6 @@ for epoch_num in range(epoch):
             total_acc_val += acc
             total_loss_val += batch_loss.item()
 
-            # TODO 检查预测数据与真实数据差异
             for i,(input,label) in enumerate(zip(inputs['input_ids'],labels)):
                 pred = output.argmax(dim=1)[i]
 

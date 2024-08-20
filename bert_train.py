@@ -24,11 +24,11 @@ def setup_seed(seed):
 def save_model(save_name):
     if not os.path.exists(save_path):
         os.makedirs(save_path)
-    torch.save(model.state_dict(), os.path.join(save_path, save_name))
+    torch.save(model, os.path.join(save_path, save_name))
 
 
 # 训练超参数
-epoch = 5
+epoch = 10
 batch_size = 32
 lr = 1e-5
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")

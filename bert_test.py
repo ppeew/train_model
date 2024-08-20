@@ -8,9 +8,10 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 save_path = './bert_checkpoint'
 
 test_dataset = GenerateData(mode="test")
-model = BertClassifier(classifier_num=72)
+model_name='best_50.pt'
 
-model.load_state_dict(torch.load(os.path.join(save_path, 'best_100.pt'),weights_only=True))
+# 加载训练好的模型
+model = torch.load(os.path.join(save_path, model_name), map_location=device,weights_only=False)
 model = model.to(device)
 model.eval()
 

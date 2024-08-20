@@ -18,7 +18,7 @@ class MyDataset(Dataset):
         # 将文本转为BERT输入格式
         self.texts = [tokenizer(text,
                                 padding='max_length',
-                                max_length=50,
+                                max_length=100,
                                 truncation=True,
                                 return_tensors="pt")
                       for text in df['text']]
@@ -54,9 +54,9 @@ def GenerateData(mode):
     dev_data_path = 'DataWords/data/test_data.txt'
     test_data_path = 'DataWords/data/test_data.txt'
 
-    train_df = pd.read_csv(train_data_path, sep='\t', header=None)
-    dev_df = pd.read_csv(dev_data_path, sep='\t', header=None)
-    test_df = pd.read_csv(test_data_path, sep='\t', header=None)
+    train_df = pd.read_csv(train_data_path, sep=';', header=None)
+    dev_df = pd.read_csv(dev_data_path, sep=';', header=None)
+    test_df = pd.read_csv(test_data_path, sep=';', header=None)
 
     new_columns = ['text', 'label']
     train_df = train_df.rename(columns=dict(zip(train_df.columns, new_columns)))
