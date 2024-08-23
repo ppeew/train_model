@@ -9,28 +9,30 @@ from sklearn.preprocessing import LabelEncoder
 bert_name = './bert-base-chinese'
 tokenizer = BertTokenizer.from_pretrained(bert_name)
 
-# 初始化标签编码器
-label_encoder = LabelEncoder()
-
 
 class MyDataset(Dataset):
-    def __init__(self, df):
+    def __init__(self, df,label_encoder):
+        # 初始化标签编码器
+        self.label_encoder = label_encoder
         # 将文本转为BERT输入格式
         self.texts = [tokenizer(text,
                                 padding='max_length',
-                                max_length=100,
+                                max_length=500,
                                 truncation=True,
                                 return_tensors="pt")
                       for text in df['text']]
 
         # 将中文标签转换为数值化标签
-        self.labels = torch.tensor(label_encoder.fit_transform(df['label']), dtype=torch.long)
+        self.labels = torch.tensor(self.label_encoder.transform(df['label']), dtype=torch.long)
 
     def __getitem__(self, idx):
         return self.texts[idx], self.labels[idx]
 
     def __len__(self):
         return len(self.labels)
+
+    def getLabelEncoder(self):
+        return self.label_encoder
 
 
 class BertClassifier(nn.Module):
@@ -49,14 +51,14 @@ class BertClassifier(nn.Module):
         return final_layer
 
 
-def GenerateData(mode):
-    train_data_path = 'DataWords/data/train_data.txt'
-    dev_data_path = 'DataWords/data/test_data.txt'
-    test_data_path = 'DataWords/data/test_data.txt'
+def GenerateData(mode,label_encoder):
+    train_data_path = 'DataWords/data/train_data.csv'
+    dev_data_path = 'DataWords/data/test_data.csv'
+    test_data_path = 'DataWords/data/test_data.csv'
 
-    train_df = pd.read_csv(train_data_path, sep=';', header=None)
-    dev_df = pd.read_csv(dev_data_path, sep=';', header=None)
-    test_df = pd.read_csv(test_data_path, sep=';', header=None)
+    train_df = pd.read_csv(train_data_path, sep='|', header=None)
+    dev_df = pd.read_csv(dev_data_path, sep='|', header=None)
+    test_df = pd.read_csv(test_data_path, sep='|', header=None)
 
     new_columns = ['text', 'label']
     train_df = train_df.rename(columns=dict(zip(train_df.columns, new_columns)))
@@ -64,9 +66,9 @@ def GenerateData(mode):
     test_df = test_df.rename(columns=dict(zip(test_df.columns, new_columns)))
 
     # 对训练集和测试集的标签进行编码
-    train_dataset = MyDataset(train_df)
-    dev_dataset = MyDataset(dev_df)
-    test_dataset = MyDataset(test_df)
+    train_dataset = MyDataset(train_df,label_encoder)
+    dev_dataset = MyDataset(dev_df,label_encoder)
+    test_dataset = MyDataset(test_df,label_encoder)
 
     if mode == 'train':
         return train_dataset
@@ -81,3 +83,17 @@ def GetClassifierLen(train_dataset):
     for data in train_dataset.labels:
         label_set.add(data)
     return len(label_set)
+
+
+def InitLabelEncoder():
+    label_encoder = LabelEncoder()
+    train_data_path = 'DataWords/data/train_data.csv'
+
+    train_df = pd.read_csv(train_data_path, sep='|', header=None)
+
+    new_columns = ['text', 'label']
+    train_df = train_df.rename(columns=dict(zip(train_df.columns, new_columns)))
+
+    # 使用整个数据集的标签来拟合 LabelEncoder
+    label_encoder.fit(train_df['label'])
+    return label_encoder

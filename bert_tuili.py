@@ -1,29 +1,16 @@
 # -*- coding: utf-8 -*-
 import os
 
-import pandas as pd
-from sklearn.preprocessing import LabelEncoder
 from transformers import BertTokenizer
 import torch
 
-def InitLabelEncoder():
-    label_encoder = LabelEncoder()
-    train_data_path = 'DataWords/data/train_data.txt'
-
-    train_df = pd.read_csv(train_data_path, sep=';', header=None)
-
-    new_columns = ['text', 'label']
-    train_df = train_df.rename(columns=dict(zip(train_df.columns, new_columns)))
-
-    # 使用整个数据集的标签来拟合 LabelEncoder
-    label_encoder.fit(train_df['label'])
-    return label_encoder
+from bert_get_data import InitLabelEncoder
 
 bert_name = './bert-base-chinese'
 tokenizer = BertTokenizer.from_pretrained(bert_name)
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-model_name = 'best_50.pt'
+model_name = 'best_2.pt'
 save_path = './bert_checkpoint'
 
 # 加载训练好的模型
@@ -41,7 +28,7 @@ while True:
 
     # 处理输入文本
     bert_input = tokenizer(text, padding='max_length',
-                           max_length=100,
+                           max_length=500,
                            truncation=True,
                            return_tensors="pt")
 

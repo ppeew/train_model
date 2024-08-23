@@ -9,7 +9,9 @@ import pandas as pd
 import random
 import os
 from torch.utils.data import Dataset, DataLoader
-from bert_get_data import BertClassifier, MyDataset, GenerateData, tokenizer,label_encoder
+
+import bert_get_data
+from bert_get_data import BertClassifier, MyDataset, GenerateData, tokenizer
 def setup_seed(seed):
     torch.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
@@ -31,12 +33,14 @@ random_seed = 20240725
 save_path = './bert_checkpoint'
 setup_seed(random_seed)
 
+label_encoder = bert_get_data.InitLabelEncoder()
 
 # 构建数据集
-train_dataset = GenerateData(mode='train')
-dev_dataset = GenerateData(mode='test')
+train_dataset = GenerateData(mode='train',label_encoder=label_encoder)
+dev_dataset = GenerateData(mode='test',label_encoder=label_encoder)
 train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
 dev_loader = DataLoader(dev_dataset, batch_size=batch_size)
+
 
 def find_max_num_file(directory):
     max_num = -1
